@@ -1,0 +1,219 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name=claude:viewport-fit-sides content=cover><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}</style><style>.md-table{overflow-x:auto}@media print{.md-table{overflow-x:visible}}</style><style>:root{color-scheme:light dark;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}}:root[data-theme="dark"]{color-scheme:dark;--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}:root[data-theme="light"]{color-scheme:light}@media print{:root,:root[data-theme="dark"]{color-scheme:light;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}}body{background:var(--md-bg);color:var(--md-text);max-width:720px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:10px;font:14px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;overflow-wrap:break-word}body>:first-child{margin-top:0}h1,h2,h3,h4,h5,h6{margin:6px 0 0;line-height:1.25;font-weight:600;text-wrap:balance}h1{font-size:1.35em}h2{font-size:1.15em;color:var(--md-muted)}h3,h4,h5,h6{font-size:1em}p,ul,ol,blockquote,table,pre,hr{margin:0}strong{font-weight:600}a{color:var(--md-link);text-decoration:none}a:hover{text-decoration:underline}ul,ol{display:flex;flex-direction:column;gap:6px;padding-left:22px}ul{list-style:disc}ol{list-style:decimal}:is(li,td,th)>*+:is(p,ul,ol,blockquote){margin-top:6px}blockquote{display:flex;flex-direction:column;gap:10px;border-left:2px solid var(--md-rule);padding-left:10px;color:var(--md-muted)}:not(pre)>code{background:var(--md-fill);padding:1px 3px;border-radius:4px;font:.92em 'SF Mono',ui-monospace,Menlo,Consolas,monospace}a>code{background:none;color:inherit}pre{background:var(--md-fill);padding:10px 12px;border-radius:6px;overflow-x:auto;font:12px/1.5 'SF Mono',ui-monospace,Menlo,Consolas,monospace;margin-block:4px}pre code{background:none;padding:0;font:inherit}table{width:100%;border-collapse:separate;border-spacing:2px;font:inherit}th,td{padding:6px 8px;border-radius:3px;text-align:left;vertical-align:top}th{background:var(--md-fill-strong);font-weight:600}td{background:var(--md-fill)}:is(th,td) :not(pre)>code{background:transparent}hr{border:0;border-top:1px solid var(--md-rule-strong);margin-block:10px}img{max-width:100%;height:auto;border-radius:4px}</style>
+</head><body>
+<pre><code class="language-python">&#34;&#34;&#34;
+Global Olympic Sport Performance Analysis
+-----------------------------------------
+Dataset: &#34;120 years of Olympic history: athletes and results&#34; (Kaggle)
+Files needed in the same folder:
+    athlete_events.csv
+    noc_regions.csv
+
+Install: pip install pandas matplotlib seaborn
+Run:     python olympic_analysis.py
+&#34;&#34;&#34;
+
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+sns.set_theme(style=&#34;whitegrid&#34;)
+os.makedirs(&#34;outputs&#34;, exist_ok=True)
+
+
+# ------------------------------------------------------------------
+# 1. LOAD &amp; CLEAN
+# ------------------------------------------------------------------
+def load_data():
+    events = pd.read_csv(&#34;athlete_events.csv&#34;)
+    regions = pd.read_csv(&#34;noc_regions.csv&#34;)
+
+    df = events.merge(regions, on=&#34;NOC&#34;, how=&#34;left&#34;)
+    df.rename(columns={&#34;region&#34;: &#34;Country&#34;}, inplace=True)
+
+    # Fill missing country names with NOC code
+    df[&#34;Country&#34;] = df[&#34;Country&#34;].fillna(df[&#34;NOC&#34;])
+
+    # Medal flag
+    df[&#34;HasMedal&#34;] = df[&#34;Medal&#34;].notna().astype(int)
+
+    # Fill numeric gaps with median per sport (reasonable for body metrics)
+    for col in [&#34;Age&#34;, &#34;Height&#34;, &#34;Weight&#34;]:
+        df[col] = df.groupby(&#34;Sport&#34;)[col].transform(lambda s: s.fillna(s.median()))
+
+    print(&#34;Shape:&#34;, df.shape)
+    print(df.info())
+    return df
+
+
+# ------------------------------------------------------------------
+# 2. MEDAL TALLY BY COUNTRY
+# ------------------------------------------------------------------
+def medal_tally(df):
+    # Count each team medal once per country/event/year (not once per athlete)
+    medals = df.dropna(subset=[&#34;Medal&#34;]).drop_duplicates(
+        subset=[&#34;Team&#34;, &#34;NOC&#34;, &#34;Games&#34;, &#34;Event&#34;, &#34;Medal&#34;]
+    )
+    tally = (
+        medals.groupby([&#34;Country&#34;, &#34;Medal&#34;]).size().unstack(fill_value=0)
+        .reindex(columns=[&#34;Gold&#34;, &#34;Silver&#34;, &#34;Bronze&#34;], fill_value=0)
+    )
+    tally[&#34;Total&#34;] = tally.sum(axis=1)
+    tally = tally.sort_values([&#34;Gold&#34;, &#34;Silver&#34;, &#34;Bronze&#34;], ascending=False)
+
+    print(&#34;\nTop 15 countries by medals:\n&#34;, tally.head(15))
+    tally.to_csv(&#34;outputs/medal_tally.csv&#34;)
+
+    top = tally.head(15)[[&#34;Gold&#34;, &#34;Silver&#34;, &#34;Bronze&#34;]]
+    top.plot(kind=&#34;barh&#34;, stacked=True, figsize=(10, 7),
+             color=[&#34;#FFD700&#34;, &#34;#C0C0C0&#34;, &#34;#CD7F32&#34;])
+    plt.gca().invert_yaxis()
+    plt.title(&#34;Top 15 Countries - All-time Olympic Medals&#34;)
+    plt.xlabel(&#34;Medals&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/top_countries_medals.png&#34;, dpi=150)
+    plt.close()
+    return medals, tally
+
+
+# ------------------------------------------------------------------
+# 3. PERFORMANCE OVER TIME
+# ------------------------------------------------------------------
+def trends_over_time(df, medals, countries=(&#34;USA&#34;, &#34;Russia&#34;, &#34;China&#34;, &#34;Germany&#34;, &#34;UK&#34;)):
+    # Participation growth
+    part = df.groupby([&#34;Year&#34;, &#34;Season&#34;])[&#34;ID&#34;].nunique().reset_index()
+    plt.figure(figsize=(11, 5))
+    sns.lineplot(data=part, x=&#34;Year&#34;, y=&#34;ID&#34;, hue=&#34;Season&#34;, marker=&#34;o&#34;)
+    plt.title(&#34;Number of Athletes per Olympic Games&#34;)
+    plt.ylabel(&#34;Unique athletes&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/participation_over_time.png&#34;, dpi=150)
+    plt.close()
+
+    # Medals per year for selected countries
+    sub = medals[medals[&#34;Country&#34;].isin(countries)]
+    by_year = sub.groupby([&#34;Year&#34;, &#34;Country&#34;]).size().reset_index(name=&#34;Medals&#34;)
+    plt.figure(figsize=(11, 6))
+    sns.lineplot(data=by_year, x=&#34;Year&#34;, y=&#34;Medals&#34;, hue=&#34;Country&#34;, marker=&#34;o&#34;)
+    plt.title(&#34;Medals Won Over Time - Selected Countries&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/country_medal_trends.png&#34;, dpi=150)
+    plt.close()
+
+
+# ------------------------------------------------------------------
+# 4. GENDER ANALYSIS
+# ------------------------------------------------------------------
+def gender_analysis(df):
+    g = df.groupby([&#34;Year&#34;, &#34;Sex&#34;])[&#34;ID&#34;].nunique().unstack(fill_value=0)
+    g[&#34;Female_%&#34;] = g[&#34;F&#34;] / (g[&#34;F&#34;] + g[&#34;M&#34;]) * 100
+
+    plt.figure(figsize=(11, 5))
+    plt.plot(g.index, g[&#34;Female_%&#34;], marker=&#34;o&#34;, color=&#34;purple&#34;)
+    plt.title(&#34;Female Participation (%) Over Time&#34;)
+    plt.ylabel(&#34;% of athletes&#34;)
+    plt.xlabel(&#34;Year&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/female_participation.png&#34;, dpi=150)
+    plt.close()
+
+
+# ------------------------------------------------------------------
+# 5. SPORT-LEVEL ANALYSIS
+# ------------------------------------------------------------------
+def sport_analysis(df):
+    # Which sports give the most medals?
+    top_sports = (
+        df[df[&#34;HasMedal&#34;] == 1].groupby(&#34;Sport&#34;).size().sort_values(ascending=False).head(15)
+    )
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=top_sports.values, y=top_sports.index, palette=&#34;viridis&#34;)
+    plt.title(&#34;Top 15 Sports by Medals Awarded (athlete-level)&#34;)
+    plt.xlabel(&#34;Medals&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/top_sports.png&#34;, dpi=150)
+    plt.close()
+
+    # Body profile of medalists in popular sports
+    popular = [&#34;Gymnastics&#34;, &#34;Swimming&#34;, &#34;Athletics&#34;, &#34;Basketball&#34;, &#34;Weightlifting&#34;, &#34;Football&#34;]
+    sub = df[df[&#34;Sport&#34;].isin(popular) &amp; (df[&#34;HasMedal&#34;] == 1)]
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(data=sub, x=&#34;Height&#34;, y=&#34;Weight&#34;, hue=&#34;Sport&#34;, alpha=0.5)
+    plt.title(&#34;Height vs Weight of Medalists by Sport&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/height_weight_medalists.png&#34;, dpi=150)
+    plt.close()
+
+    # Age distribution of medalists
+    plt.figure(figsize=(10, 5))
+    sns.boxplot(data=sub, x=&#34;Sport&#34;, y=&#34;Age&#34;)
+    plt.title(&#34;Age Distribution of Medalists&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/age_medalists.png&#34;, dpi=150)
+    plt.close()
+
+
+# ------------------------------------------------------------------
+# 6. EFFICIENCY: MEDAL CONVERSION RATE
+# ------------------------------------------------------------------
+def conversion_rate(df, min_athletes=500):
+    stats = df.groupby(&#34;Country&#34;).agg(
+        Athletes=(&#34;ID&#34;, &#34;nunique&#34;),
+        Entries=(&#34;ID&#34;, &#34;count&#34;),
+        Medals=(&#34;HasMedal&#34;, &#34;sum&#34;),
+    )
+    stats[&#34;MedalRate_%&#34;] = stats[&#34;Medals&#34;] / stats[&#34;Entries&#34;] * 100
+    stats = stats[stats[&#34;Athletes&#34;] &gt;= min_athletes].sort_values(&#34;MedalRate_%&#34;, ascending=False)
+
+    print(&#34;\nMost efficient countries (medals per entry):\n&#34;, stats.head(10))
+    stats.to_csv(&#34;outputs/country_efficiency.csv&#34;)
+
+    stats.head(15)[&#34;MedalRate_%&#34;].plot(kind=&#34;bar&#34;, figsize=(11, 5), color=&#34;teal&#34;)
+    plt.title(f&#34;Medal Conversion Rate (countries with &gt;= {min_athletes} athletes)&#34;)
+    plt.ylabel(&#34;Medals per 100 entries&#34;)
+    plt.tight_layout()
+    plt.savefig(&#34;outputs/conversion_rate.png&#34;, dpi=150)
+    plt.close()
+
+
+# ------------------------------------------------------------------
+# 7. HOST-COUNTRY ADVANTAGE (simple version)
+# ------------------------------------------------------------------
+def host_advantage(medals):
+    host_map = {
+        &#34;Los Angeles&#34;: &#34;USA&#34;, &#34;Atlanta&#34;: &#34;USA&#34;, &#34;Salt Lake City&#34;: &#34;USA&#34;,
+        &#34;Beijing&#34;: &#34;China&#34;, &#34;London&#34;: &#34;UK&#34;, &#34;Sydney&#34;: &#34;Australia&#34;,
+        &#34;Athens&#34;: &#34;Greece&#34;, &#34;Barcelona&#34;: &#34;Spain&#34;, &#34;Seoul&#34;: &#34;South Korea&#34;,
+        &#34;Moskva&#34;: &#34;Russia&#34;, &#34;Munich&#34;: &#34;Germany&#34;, &#34;Rio de Janeiro&#34;: &#34;Brazil&#34;,
+        &#34;Montreal&#34;: &#34;Canada&#34;, &#34;Mexico City&#34;: &#34;Mexico&#34;, &#34;Tokyo&#34;: &#34;Japan&#34;,
+    }
+    rows = []
+    for city, country in host_map.items():
+        games = medals[medals[&#34;City&#34;] == city]
+        if games.empty:
+            continue
+        for year, g in games.groupby(&#34;Year&#34;):
+            host_medals = (g[&#34;Country&#34;] == country).sum()
+            prev = medals[(medals[&#34;Country&#34;] == country) &amp; (medals[&#34;Year&#34;] == year - 4)]
+            rows.append({&#34;City&#34;: city, &#34;Year&#34;: year, &#34;Host&#34;: country,
+                         &#34;Medals_as_host&#34;: host_medals, &#34;Medals_prev_games&#34;: len(prev)})
+    host_df = pd.DataFrame(rows)
+    print(&#34;\nHost advantage:\n&#34;, host_df)
+    host_df.to_csv(&#34;outputs/host_advantage.csv&#34;, index=False)
+
+
+# ------------------------------------------------------------------
+# MAIN
+# ------------------------------------------------------------------
+if __name__ == &#34;__main__&#34;:
+    data = load_data()
+    medals_df, tally_df = medal_tally(data)
+    trends_over_time(data, medals_df)
+    gender_analysis(data)
+    sport_analysis(data)
+    conversion_rate(data)
+    host_advantage(medals_df)
+    print(&#34;\nDone! Charts and CSVs saved in the &#39;outputs&#39; folder.&#34;)
+</code></pre>
+
+</body></html>
